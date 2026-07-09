@@ -8,9 +8,12 @@ import { useBannerState } from '@myst-theme/providers';
 
 type BannerMessage = {
   id: string;
+  slot: 'part' | 'url';
   ast?: GenericParent;
   html?: string;
 };
+
+const STORAGE_PREFIX = 'myst-dismissed-banner-';
 
 /**
  * A banner component at the top that shows messages passed as a MyST AST
@@ -62,33 +65,32 @@ export function Banner({
     };
   }, [url]);
 
-  // Each message has its own ID for storing dismissal state; if a message
-  // changes, its ID will be different and it'll show again
+  // Each message has an ID identifying its content; if a message changes,
+  // its ID will be different and it'll show again
   const messages: BannerMessage[] = [];
   if (hasLocalContent) {
-    messages.push({ id: hashString(JSON.stringify(content)), ast: content });
+    messages.push({ id: hashString(JSON.stringify(content)), slot: 'part', ast: content });
   }
   if (remote?.html) {
-    messages.push({ id: hashString(remote.text), html: remote.html });
+    messages.push({ id: hashString(remote.text), slot: 'url', html: remote.html });
   }
   const messageIds = messages.map((m) => m.id).join(',');
 
-  // Start with dismissal unknown, and only show messages after checking
-  // localStorage on the client. This avoids flickering on initial load.
-  const [dismissed, setDismissed] = useState<Record<string, boolean> | undefined>(undefined);
+  // Dismissal state is bounded: one localStorage key per slot, holding the ID
+  // of the currently dismissed message, so storage does not grow as
+  // announcements change over time. Start with dismissal unknown, and only
+  // show messages after checking localStorage on the client. This avoids
+  // flickering on initial load.
+  const [dismissed, setDismissed] = useState<Record<string, string | null> | undefined>(undefined);
 
   useEffect(() => {
-    setDismissed(
-      Object.fromEntries(
-        messages.map((m) => [
-          m.id,
-          localStorage.getItem(`myst-dismissed-banner-${m.id}`) === 'true',
-        ]),
-      ),
-    );
+    setDismissed({
+      part: localStorage.getItem(`${STORAGE_PREFIX}part`),
+      url: localStorage.getItem(`${STORAGE_PREFIX}url`),
+    });
   }, [messageIds]);
 
-  const visibleMessages = dismissed ? messages.filter((m) => !dismissed[m.id]) : [];
+  const visibleMessages = dismissed ? messages.filter((m) => dismissed[m.slot] !== m.id) : [];
   const visibleIds = visibleMessages.map((m) => m.id).join(',');
 
   // Share the overall visibility and height of the banner so that other
@@ -105,9 +107,9 @@ export function Banner({
     });
   }, [visibleIds, dismissed === undefined]);
 
-  const handleDismiss = (id: string) => {
-    localStorage.setItem(`myst-dismissed-banner-${id}`, 'true');
-    setDismissed((prev) => ({ ...prev, [id]: true }));
+  const handleDismiss = (message: BannerMessage) => {
+    localStorage.setItem(`${STORAGE_PREFIX}${message.slot}`, message.id);
+    setDismissed((prev) => ({ ...prev, [message.slot]: message.id }));
   };
 
   // Don't render if there is nothing to show
@@ -140,7 +142,7 @@ export function Banner({
 
             {/* Close button */}
             <button
-              onClick={() => handleDismiss(message.id)}
+              onClick={() => handleDismiss(message)}
               className="flex-shrink-0 p-1 rounded hover:bg-myst-accent-surface-border focus:outline-none focus-visible:ring-2 focus-visible:ring-myst-focus-ring focus-visible:ring-offset-2 transition-colors"
               aria-label="Dismiss announcement"
               type="button"
