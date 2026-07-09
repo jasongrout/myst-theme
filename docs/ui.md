@@ -72,13 +72,31 @@ site:
     banner: My banner [content](https://mystmd.org)!
 ```
 
+You can also fetch the banner from a URL when each page loads, so an
+announcement can be managed centrally across many sites and updated without
+rebuilding them:
+
+```yaml
+site:
+  options:
+    banner_url: https://jupyter.org/assets/banner.html
+```
+
+The URL should return an HTML fragment; when it is empty (or cannot be
+fetched) no banner is shown. The URL must allow cross-origin (CORS) requests
+from your site.
+
 ### Behavior
 
 - Appears at the top of every page, above the navigation
-- Users can dismiss it by clicking the X button
+- Users can dismiss each message by clicking its X button; a site using both
+  a `banner` part and `banner_url` shows the messages stacked in one bar,
+  dismissed independently
 - Dismissal persists in the browser
 - Will expand vertically if extra content is in it
-- If you change the banner content, it will reappear for all users
+- If you change a message, it will reappear for all users. For a message
+  fetched from `banner_url`, only text changes make it reappear —
+  markup-only changes keep it dismissed.
 
 ## Footer
 

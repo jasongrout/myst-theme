@@ -106,10 +106,13 @@ function ArticlePageAndNavigationInternal({
   const { container, toc } = useSidebarHeight(top, inset);
   const siteManifest = useSiteManifest() as any;
   const projectParts = { ...siteManifest?.projects?.[0]?.parts, ...siteManifest?.parts };
+  const bannerUrl = (siteManifest?.options as TemplateOptions | undefined)?.banner_url;
   return (
     <>
       <TabStateProvider>
-        {projectParts?.banner && <Banner content={projectParts.banner.mdast} />}
+        {(projectParts?.banner || bannerUrl) && (
+          <Banner content={projectParts?.banner?.mdast} url={bannerUrl} />
+        )}
       </TabStateProvider>
       <TopNav
         hideToc={hide_toc}

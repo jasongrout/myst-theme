@@ -78,6 +78,14 @@ options:
   - type: file
     id: style
     description: Local path to a CSS file
+  - type: string
+    id: banner_url
+    description: >-
+      URL to fetch announcement banner content from when a page loads. The
+      response should be an HTML fragment; when it is empty no banner is shown.
+      This allows a banner to be managed centrally across many sites, for
+      example https://jupyter.org/assets/banner.html. The URL must allow
+      cross-origin (CORS) requests from the site.
 parts:
   - id: footer
     description: The site wide footer
