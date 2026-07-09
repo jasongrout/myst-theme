@@ -7,12 +7,58 @@ import { XMarkIcon } from '@heroicons/react/24/solid';
 import { useBannerState } from '@myst-theme/providers';
 
 /**
- * A dismissible banner component at the top that shows content passed as a MyST AST.
+ * A dismissible banner component at the top that shows content passed as a MyST AST
+ * and/or an HTML fragment fetched from a URL when the page loads.
+ *
+ * Fetching from a URL allows an announcement to be managed centrally across many
+ * sites and updated without rebuilding them, for example
+ * https://jupyter.org/assets/banner.html. An empty response means no banner.
  */
-export function Banner({ content, className }: { content: GenericParent; className?: string }) {
-  // Generate banner ID from content for storing dismissal state
-  const contentString = JSON.stringify(content);
-  const bannerId = hashString(contentString);
+export function Banner({
+  content,
+  url,
+  className,
+}: {
+  content?: GenericParent;
+  url?: string;
+  className?: string;
+}) {
+  // Banner fetched from `url` on the client; undefined while the fetch is in
+  // flight, empty when there is no remote banner (no url, empty response, or
+  // fetch failure). Dismissal is tracked by the banner text rather than its
+  // HTML, so markup-only changes do not re-show a dismissed banner.
+  const [remote, setRemote] = useState<{ html: string; text: string } | undefined>(
+    url ? undefined : { html: '', text: '' },
+  );
+
+  useEffect(() => {
+    if (!url) {
+      setRemote({ html: '', text: '' });
+      return;
+    }
+    let cancelled = false;
+    fetch(url)
+      .then((resp) => (resp.ok ? resp.text() : ''))
+      .catch(() => '')
+      .then((html) => {
+        if (cancelled) return;
+        const trimmed = html.trim();
+        const doc = new DOMParser().parseFromString(trimmed, 'text/html');
+        const text = doc.body.textContent?.replace(/\s+/g, ' ').trim() ?? '';
+        setRemote({ html: trimmed, text });
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [url]);
+
+  // An empty banner part still arrives as an mdast root with no children
+  const hasLocalContent = !!content && (content.children?.length ?? 0) > 0;
+
+  // Generate banner ID from content for storing dismissal state; undefined
+  // until any remote content has resolved so we don't flash or measure early
+  const contentString = hasLocalContent ? JSON.stringify(content) : '';
+  const bannerId = remote === undefined ? undefined : hashString(contentString + remote.text);
 
   // Start hidden, only show after checking localStorage on client.
   // This avoids flickering on initial load.
@@ -23,11 +69,13 @@ export function Banner({ content, className }: { content: GenericParent; classNa
   // Check dismissal state on client side
   // If the banner content changes, the ID will be different and it'll show again
   useEffect(() => {
+    if (bannerId === undefined) return;
     const el = ref.current;
 
+    const empty = !hasLocalContent && !remote?.html;
     const dismissed = localStorage.getItem(`myst-dismissed-banner-${bannerId}`) === 'true';
     setBannerState({
-      visible: !dismissed,
+      visible: !empty && !dismissed,
       height: el ? el.getBoundingClientRect().height : 0,
     });
   }, [bannerId, bannerState.visible]);
@@ -58,7 +106,12 @@ export function Banner({ content, className }: { content: GenericParent; classNa
       <div className="max-w-screen-lg mx-auto flex items-center gap-4">
         {/* Banner content */}
         <div className="flex-1 text-sm text-center text-myst-accent-surface-text [&>*]:m-0 [&_a]:underline [&_a]:font-semibold">
-          <MyST ast={content} />
+          {hasLocalContent && <MyST ast={content} />}
+          {remote?.html && (
+            // The site author controls this URL, so the content shares their
+            // trust level, as with pydata-sphinx-theme's announcement option
+            <div className="[&>*]:m-0" dangerouslySetInnerHTML={{ __html: remote.html }} />
+          )}
         </div>
 
         {/* Close button */}
