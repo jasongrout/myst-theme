@@ -89,11 +89,13 @@ from your site.
 ### Behavior
 
 - Appears at the top of every page, above the navigation
-- Users can dismiss it by clicking the X button
+- Users can dismiss each message by clicking its X button; a site using both
+  a `banner` part and `banner_url` shows the messages stacked in one bar,
+  dismissed independently
 - Dismissal persists in the browser
 - Will expand vertically if extra content is in it
-- If you change the banner content, it will reappear for all users. For
-  a banner fetched from `banner_url`, only text changes make it reappear —
+- If you change a message, it will reappear for all users. For a message
+  fetched from `banner_url`, only text changes make it reappear —
   markup-only changes keep it dismissed.
 
 ## Footer
