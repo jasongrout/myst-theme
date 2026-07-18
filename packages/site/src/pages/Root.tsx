@@ -139,6 +139,7 @@ export function DocumentWithoutProviders({
         <Analytics
           analytics_google={config?.options?.analytics_google}
           analytics_plausible={config?.options?.analytics_plausible}
+          analytics_plausible_script={config?.options?.analytics_plausible_script}
         />
         {head}
       </head>

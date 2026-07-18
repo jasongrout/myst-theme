@@ -57,7 +57,10 @@ options:
     description: Google analytics key
   - type: string
     id: analytics_plausible
-    description: Plausible analytics key
+    description: "Deprecated: site domain for the legacy Plausible snippet. Use analytics_plausible_script instead"
+  - type: string
+    id: analytics_plausible_script
+    description: Plausible analytics script URL or id (e.g. `pa-XXXX`), from the Site Installation section of your Plausible site settings
   - type: boolean
     id: numbered_references
     description: Show references as numbered, rather than in APA-style. Only applies to parenthetical citations

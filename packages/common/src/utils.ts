@@ -169,6 +169,10 @@ export function updateSiteManifestStaticLinksInplace(
     data.options.analytics_plausible = (data as any).analytics_plausible;
     delete (data as any).analytics_plausible;
   }
+  if ((data as any).analytics_plausible_script) {
+    data.options.analytics_plausible_script = (data as any).analytics_plausible_script;
+    delete (data as any).analytics_plausible_script;
+  }
   if (data.options.logo) data.options.logo = updateUrl(data.options.logo);
   if (data.options.logo_dark) data.options.logo_dark = updateUrl(data.options.logo_dark);
   if (data.options.favicon) data.options.favicon = updateUrl(data.options.favicon);

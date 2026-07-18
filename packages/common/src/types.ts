@@ -81,7 +81,9 @@ export type CommonTemplateOptions = {
   logo_url?: string;
   logo_alt?: string;
   analytics_google?: string;
+  /** @deprecated Use `analytics_plausible_script` with the new Plausible snippet format */
   analytics_plausible?: string;
+  analytics_plausible_script?: string;
   numbered_references?: boolean;
   folders?: boolean;
   style?: string;
