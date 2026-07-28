@@ -1,5 +1,8 @@
 @layer base {
   :root {
+    /* Native form controls, scrollbars, and the default canvas follow the theme */
+    color-scheme: light;
+
     /* Links */
     --myst-color-link: #1d4ed8; /* blue-700 */
     --myst-color-link-hover: #3b82f6; /* blue-500 */
@@ -100,6 +103,8 @@
   }
 
   .dark {
+    color-scheme: dark;
+
     --myst-color-link: #60a5fa; /* blue-400 */
     --myst-color-link-hover: #93c5fd; /* blue-300 */
     --myst-color-link-underline: #3b82f6; /* blue-500 */

@@ -1,8 +1,8 @@
 import React from 'react';
 import { validateRenderers, type NodeRenderers, type NodeRenderersValidated } from './renderers.js';
-import { Theme } from '@myst-theme/common';
+import { Theme, ThemePreference } from '@myst-theme/common';
 
-export { Theme };
+export { Theme, ThemePreference };
 
 export type LinkProps = {
   to: string;
@@ -45,10 +45,32 @@ export function isTheme(value: unknown): value is Theme {
   return typeof value === 'string' && Object.values(Theme).includes(value as Theme);
 }
 
-type SetThemeType = (theme: Theme) => void;
+export function isThemePreference(value: unknown): value is ThemePreference {
+  return (
+    typeof value === 'string' && Object.values(ThemePreference).includes(value as ThemePreference)
+  );
+}
+
+/**
+ * The theme preference cycle used by the theme switcher button:
+ * system → light → dark → system. An unknown preference is treated as system.
+ */
+export function nextThemePreference(preference: ThemePreference | null): ThemePreference {
+  switch (preference) {
+    case ThemePreference.light:
+      return ThemePreference.dark;
+    case ThemePreference.dark:
+      return ThemePreference.system;
+    default:
+      return ThemePreference.light;
+  }
+}
+
+type SetThemeType = (preference: ThemePreference) => void;
 
 type ThemeContextType = {
   theme: Theme | null;
+  preference?: ThemePreference | null;
   setTheme: SetThemeType;
   renderers?: NodeRenderersValidated;
   top?: number;
@@ -62,6 +84,7 @@ ThemeContext.displayName = 'ThemeContext';
 
 export function ThemeProvider({
   theme,
+  preference,
   setTheme,
   children,
   renderers,
@@ -71,6 +94,7 @@ export function ThemeProvider({
   top,
 }: {
   theme: Theme | null;
+  preference?: ThemePreference | null;
   setTheme: SetThemeType;
   children: React.ReactNode;
   renderers?: NodeRenderers;
@@ -83,7 +107,16 @@ export function ThemeProvider({
 
   return (
     <ThemeContext.Provider
-      value={{ theme, setTheme, renderers: validatedRenderers, Link, NavLink, navigate, top }}
+      value={{
+        theme,
+        preference,
+        setTheme,
+        renderers: validatedRenderers,
+        Link,
+        NavLink,
+        navigate,
+        top,
+      }}
     >
       {children}
     </ThemeContext.Provider>
@@ -101,20 +134,22 @@ export function useThemeSwitcher() {
     console.error(error);
     return {
       theme: Theme.light,
+      preference: ThemePreference.light,
       isLight: true,
       isDark: false,
+      isSystem: false,
       setTheme: throwError,
       nextTheme: throwError,
     };
   }
-  const { theme, setTheme } = context;
+  const { theme, preference = null, setTheme } = context;
   const isDark = theme === Theme.dark;
   const isLight = theme === Theme.light;
+  const isSystem = preference === ThemePreference.system;
   const nextTheme = React.useCallback(() => {
-    const next = theme === Theme.light ? Theme.dark : Theme.light;
-    setTheme(next);
-  }, [theme]);
-  return { theme, isLight, isDark, setTheme, nextTheme };
+    setTheme(nextThemePreference(preference));
+  }, [preference, setTheme]);
+  return { theme, preference, isLight, isDark, isSystem, setTheme, nextTheme };
 }
 
 export function useNodeRenderers(): NodeRenderersValidated {

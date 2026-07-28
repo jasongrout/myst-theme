@@ -4,7 +4,7 @@ import type { NodeRenderers } from '@myst-theme/providers';
 import {
   BaseUrlProvider,
   SiteProvider,
-  Theme,
+  ThemePreference,
   ThemeProvider,
   useThemeSwitcher,
 } from '@myst-theme/providers';
@@ -47,7 +47,7 @@ export function Document({
 }: {
   children: React.ReactNode;
   scripts?: React.ReactNode;
-  theme?: Theme;
+  theme?: ThemePreference;
   config?: SiteManifest;
   title?: string;
   staticBuild?: boolean;
@@ -69,22 +69,29 @@ export function Document({
       };
 
   // (Local) theme state driven by SSR and cookie/localStorage
-  const [theme, setTheme] = useTheme({ ssrTheme: ssrTheme, useLocalStorage: staticBuild });
+  const [theme, preference, setTheme] = useTheme({ ssrTheme, useLocalStorage: staticBuild });
 
-  // Inject blocking element to set proper pre-hydration state
-  const headAndLoader = (
-    <>
-      {head}
-      {ssrTheme ? undefined : <BlockingThemeLoader useLocalStorage={!!staticBuild} />}
-    </>
+  // The server can only resolve an explicit light/dark preference; for an unknown or
+  // 'system' preference, inject a blocking element to set proper pre-hydration state
+  const ssrResolvable = ssrTheme === ThemePreference.light || ssrTheme === ThemePreference.dark;
+  const themeLoader = ssrResolvable ? undefined : (
+    <BlockingThemeLoader useLocalStorage={!!staticBuild} />
   );
 
   return (
-    <ThemeProvider theme={theme} setTheme={setTheme} renderers={renderers} {...links} top={top}>
+    <ThemeProvider
+      theme={theme}
+      preference={preference}
+      setTheme={setTheme}
+      renderers={renderers}
+      {...links}
+      top={top}
+    >
       <DocumentWithoutProviders
         children={children}
         scripts={scripts}
-        head={headAndLoader}
+        head={head}
+        themeLoader={themeLoader}
         config={config}
         title={title}
         liveReloadListener={!staticBuild}
@@ -99,6 +106,7 @@ export function DocumentWithoutProviders({
   children,
   scripts,
   head,
+  themeLoader,
   config,
   title,
   baseurl,
@@ -108,32 +116,46 @@ export function DocumentWithoutProviders({
   children: React.ReactNode;
   scripts?: React.ReactNode;
   head?: React.ReactNode;
+  themeLoader?: React.ReactNode;
   config?: SiteManifest;
   title?: string;
   baseurl?: string;
   useLocalStorageForDarkMode?: boolean;
   top?: number;
-  theme?: Theme;
   liveReloadListener?: boolean;
 }) {
-  // Theme value from theme context. For a clean page load (no cookies), both ssrTheme and theme are null
-  // And thus the BlockingThemeLoader is used to inject the client-preferred theme (localStorage or media query)
-  // without a FOUC.
+  // Theme and preference come from the theme context. The stored value is a *preference*
+  // (light, dark, or system); the resolved theme (light or dark) is applied as the html class,
+  // and the preference is exposed as a data attribute for CSS (e.g. the theme button icons).
   //
-  // In live-server contexts, setting the theme or changing the system preferred theme will modify the ssrTheme upon next request _and_ update the useThemeSwitcher context state, leading to a re-render
-  // Upon re-render, the state-theme value is set on `html` and the client-side BlockingThemeLoader discovers that it has no additional work to do, exiting the script tag early
-  // Upon a new request to the server, the theme preference is received from the set cookie, and therefore we don't inject a BlockingThemeLoader AND we have the theme value in useThemeSwitcher.
+  // For a clean page load (no cookies) or a saved 'system' preference, the server cannot resolve
+  // the theme, so both theme and (on a clean load) preference are null during SSR, and the
+  // BlockingThemeLoader injects the client-resolved theme (localStorage or media query) without
+  // a FOUC. The loader must precede the stylesheet links: inline scripts that follow pending
+  // stylesheets wait for them, and this must run before first paint. It also sets an inline
+  // `color-scheme` style so the browser canvas is correct before any stylesheet loads.
   //
-  // In static sites, ssrTheme is forever null.
-  // if (ssrTheme) { assert(theme === ssrTheme) }
-  const { theme } = useThemeSwitcher();
+  // In live-server contexts, setting the theme preference updates the useThemeSwitcher context
+  // state (re-rendering the html class/attributes) and posts the preference to the server cookie.
+  // Upon the next request, an explicit light/dark preference is rendered during SSR and no
+  // BlockingThemeLoader is injected.
+  //
+  // In static sites, the server can never resolve the theme, and the preference is saved in
+  // localStorage instead of a cookie.
+  const { theme, preference } = useThemeSwitcher();
   return (
     // Set the theme during SSR if possible, otherwise leave it up to the BlockingThemeLoader
-    <html lang="en" className={classNames(theme)} style={{ scrollPadding: top }}>
+    <html
+      lang="en"
+      className={classNames(theme)}
+      data-theme-preference={preference ?? undefined}
+      style={{ scrollPadding: top, colorScheme: theme ?? undefined }}
+    >
       <head>
         <meta charSet="utf-8" />
         <meta name="viewport" content="width=device-width,initial-scale=1" />
         {title && <title>{title}</title>}
+        {themeLoader}
         <Meta />
         <Links />
         <Analytics
@@ -167,7 +189,7 @@ export function App() {
 export function AppErrorBoundary() {
   const error = useRouteError();
   return (
-    <Document theme={Theme.light}>
+    <Document theme={ThemePreference.light}>
       <main className="article-grid subgrid-gap col-screen">
         <article className="article">
           {isRouteErrorResponse(error) ? <Error404 /> : <ErrorUnhandled error={error as any} />}

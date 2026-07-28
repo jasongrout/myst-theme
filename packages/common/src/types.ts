@@ -8,6 +8,18 @@ export enum Theme {
   dark = 'dark',
 }
 
+/**
+ * A user's theme preference: an explicit theme, or following the
+ * system-preferred color scheme. The preference is what is persisted
+ * (cookie or localStorage) and resolves to a `Theme` that is applied
+ * to the document.
+ */
+export enum ThemePreference {
+  light = 'light',
+  dark = 'dark',
+  system = 'system',
+}
+
 export enum ErrorStatus {
   noSite = 'Site was not found',
   noArticle = 'Article was not found',
@@ -27,7 +39,7 @@ export type Heading = {
 };
 
 export type SiteLoader = {
-  theme?: Theme;
+  theme?: ThemePreference;
   config?: SiteManifest;
   searchIndex?: MystSearchIndex;
   CONTENT_CDN_PORT?: string | number;
