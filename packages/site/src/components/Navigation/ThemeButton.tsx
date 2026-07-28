@@ -4,7 +4,8 @@ import classNames from 'classnames';
 
 /**
  * A half-filled circle, a common icon for following the system color scheme.
- * Drawn in the style of the heroicons 24x24 solid icons.
+ * Drawn in the style of the heroicons 24x24 solid icons; heroicons does not
+ * provide one (requested at https://github.com/tailwindlabs/heroicons/discussions/1366).
  */
 function SystemIcon({ className }: { className?: string }) {
   return (
